@@ -1,4 +1,4 @@
-/* The purpose of the following code is the create a GUI that interacts with an SQL database to dynamically create 
+/* The purpose of the following code is the create a GUI that interacts with an mySQL database to dynamically create 
  RadioButtons according to the names of the tables located in the database.  Once the radioButtons aregenerated and selected
  the contents of the corresponding SQL table is displayed to the user.  The second tab of the GUI allows a user the input and manipulate a valid DNA
  sequence.  The program also displays base count, percentage and total count to the user.  
@@ -228,9 +228,10 @@ public class MelanieA3 extends JPanel implements ActionListener{
         //if loaded user has access to mysql driver class
 
         //established connection to the database through the local host
-        String databaseURI = "jdbc:mysql://localhost/assignment3?user=root&password=tho842wt";
+        String databaseURI = "jdbc:mysql://localhost/assignment3?user=root&password=****";
         String username = "root";
-        String password = "tho842wt";
+        //insert mysqlpassword here 
+        String password = "*****";
 
         //declare references to key objects that are used by sql
         java.sql.Connection connection = null;
