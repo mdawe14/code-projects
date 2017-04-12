@@ -1,0 +1,513 @@
+/* The purpose of the following code is the create a GUI that interacts with an SQL database to dynamically create 
+ RadioButtons according to the names of the tables located in the database.  Once the radioButtons aregenerated and selected
+ the contents of the corresponding SQL table is displayed to the user.  The second tab of the GUI allows a user the input and manipulate a valid DNA
+ sequence.  The program also displays base count, percentage and total count to the user.  
+*/
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.Vector;
+
+
+//buttongroup
+//tabs
+//display
+
+/**
+ * Created by melan on 2017-04-08.
+ */
+public class MelanieA3 extends JPanel implements ActionListener{
+
+    private static final long serialVersionUID = 98765431;
+    //Radiobutton that will be later use to dynamically create table name radio buttons
+    private JRadioButton tableName;
+    //a text entry box to store the user's input sequence (A2)
+    private JTextArea inputSequence;
+    // a drop down menu that will display the users preferred number of characters per line (A2)
+    private JComboBox character;
+    // a check box that when selected will group the sequence in groups of 10 characters seperated by a space (A2)
+    private JCheckBox group;
+    // two radio buttons to toggle between uppercase and lowercase (A2)
+    private JRadioButton upperCase;
+    private JRadioButton lowerCase;
+    //a button that will process the formatted sequence (A2)
+    private JButton process;
+    //a button that will reset the application to default settings (A2)
+    private JButton reset;
+    //a text entry box to display the user's formatted sequence (A2)
+    private JTextArea outputSequence;
+    //a text box that will display the percentage of each base (A2)
+    private JTextArea numberA;
+    private JTextArea numberT;
+    private JTextArea numberC;
+    private JTextArea numberG;
+    private JTextArea percentA;
+    private JTextArea percentT;
+    private JTextArea percentG;
+    private JTextArea percentC;
+    //displays the total sequence length (A2)
+    private JTextArea totalNum;
+    //displays a warning that improper sequence was submitted by the user (A2)
+    private JOptionPane frame;
+    //a pop up menu that gives yes,no, cancel option when the reset button is pressed (A2)
+    private JOptionPane resetWarning;
+
+    //A button to display the table contents
+    private JButton display;
+    //creates table for sql data to be input into
+    private JTable table;
+    // creates scroll panel for the Jtable
+    private JScrollPane TablePane;
+    //instatianiates a variable where the SQL command will be stored
+    String selectTable;
+    //represents SQL Query
+    Statement statement = null;
+    //represents rows returned by SQL Query
+    ResultSet result = null;
+    //Creates a group to where the tableName RadioButtons will be added to
+    //this ensures only one button can be selected at a time
+    ButtonGroup grouper = new ButtonGroup();
+
+    public MelanieA3() {
+        //create new Panel for both assignment 2 and assignment 3
+        JPanel controlsArea = new JPanel();
+        JPanel controlsArea2= new JPanel();
+        controlsArea2.setLayout(new BoxLayout(controlsArea2, BoxLayout.Y_AXIS));
+        //try to set the preferred size of the window
+        setPreferredSize(new Dimension(1000, 1000));
+        this.add(controlsArea2, BorderLayout.SOUTH);
+        controlsArea.setLayout(new BoxLayout(controlsArea, BoxLayout.Y_AXIS));
+        //try to set the preferred size of the window
+        setPreferredSize(new Dimension(1000, 1000));
+
+        //****assignment 2 code****
+        //Creates label that will be above text box
+        controlsArea.add(new Label("Enter Sequence Data: "));
+        this.add(controlsArea, BorderLayout.SOUTH);
+        inputSequence = new JTextArea(3,50);
+        //fill box so the text does not exceed the width of the box.
+        inputSequence.setLineWrap(true);
+        //allow for vertical scrolling
+        JScrollPane areaScrollPane = new JScrollPane(inputSequence);
+        areaScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        //add formatted text box to GUI
+        controlsArea.add(areaScrollPane);
+        //Creates label above Combo Box to select the characters per line
+        controlsArea.add(new Label("Number of characters per line: "));
+        //creates drop down menu
+        character = new JComboBox();
+        //adds options to drop down menu
+        character.addItem(new String("40"));
+        character.addItem(new String("50"));
+        character.addItem(new String("60"));
+        character.addItem(new String("70"));
+        //sets default choice to 60 characters per line
+        character.setSelectedIndex(2);
+        //adds drop down list to GUI
+        controlsArea.add(character);
+        //tells the character drop down menu that MelanieA2.java is its ActionListener
+        character.addActionListener(this);
+        //creates and adds new checkbox to allow for user to group sequence by 10 bps.
+        group = new JCheckBox("Group Sequence by 10 basepairs");
+        controlsArea.add(group);
+        //Creates two radio buttons for user to select whether sequence is displayed in
+        //upper or lower case letters
+        upperCase = new JRadioButton("Uppercase");
+        lowerCase = new JRadioButton("Lowercase");
+        //to allow for only one of the case options to be selected at a time
+        //each Radio Button is but in a ButtonGroup.
+        ButtonGroup groups = new ButtonGroup();
+        //adds radio button to the button group.
+        groups.add(upperCase);
+        groups.add(lowerCase);
+        //adds both radio buttons to the GUI.
+        controlsArea.add(upperCase);
+        controlsArea.add(lowerCase);
+        //sets the lower case button selected by default.
+        lowerCase.setSelected(true);
+        //creates a new panel for both of the Process and Reset buttons to be added beside eachother
+        JPanel buttonPane = new JPanel();
+        //lays out the buttons from left to right
+        buttonPane.setLayout(new BoxLayout(buttonPane, BoxLayout.LINE_AXIS));
+        buttonPane.add(Box.createHorizontalGlue());
+        //creates process button to process sequence once formats has been chosen
+        process = new JButton("Process");
+        //make MelanieA2 action listener
+        //associates the process button's ActionEvent with our actionPerformer
+        //method below
+        process.setActionCommand("process_button_was_pressed");
+        //tells the process button that MelanieA2 it its ActionListener
+        process.addActionListener(this);
+        //adds the process button to button pane.
+        buttonPane.add(process);
+        //creates reset button that will clear all fields
+        reset = new JButton("Reset");
+        //associates the reset button's ActionEvent with our actionPerformer
+        reset.setActionCommand("reset_button_was_pressed");
+        //tells the reset button that MelanieA2 it its ActionListener
+        reset.addActionListener(this);
+        //adds the reset button to button pane.
+        buttonPane.add(reset);
+        //adds the buttonPane with both reset and process buttons to the GUI
+        controlsArea.add(buttonPane);
+        //creates second text box to display formatted sequence
+        outputSequence = new JTextArea(3,50);
+        controlsArea.add(new Label("Formatted Sequence: "));
+        JScrollPane areaScrollPane2 = new JScrollPane(outputSequence);
+        areaScrollPane2.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        //disables horizontal scrolling
+        areaScrollPane2.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        //adds second text box to GUI
+        controlsArea.add(areaScrollPane2);
+        //create and label uneditable text boxes to display nucleotide number and percentages within the input sequence
+        controlsArea.add(new Label("Number of A: "));
+        numberA = new JTextArea();
+        numberA.setEditable(false);
+        controlsArea.add(numberA);
+        controlsArea.add(new Label("% A: "));
+        percentA = new JTextArea();
+        percentA.setEditable(false);
+        controlsArea.add(percentA);
+        controlsArea.add(new Label("Number of T: "));
+        numberT = new JTextArea();
+        numberT.setEditable(false);
+        controlsArea.add(numberT);
+        controlsArea.add(new Label("% T: "));
+        percentT = new JTextArea();
+        percentT.setEditable(false);
+        controlsArea.add(percentT);
+        controlsArea.add(new Label("Number of C: "));
+        numberC = new JTextArea();
+        numberC.setEditable(false);
+        controlsArea.add(numberC);
+        controlsArea.add(new Label("% C: "));
+        percentC = new JTextArea();
+        percentC.setEditable(false);
+        controlsArea.add(percentC);
+        controlsArea.add(new Label("Number of G: "));
+        numberG = new JTextArea();
+        numberG.setEditable(false);
+        controlsArea.add(numberG);
+        controlsArea.add(new Label("% G: "));
+        percentG = new JTextArea();
+        percentG.setEditable(false);
+        controlsArea.add(percentG);
+        //Creates and adds label and uneditable text box for displaying the total length of the users sequence
+        controlsArea.add(new Label("Total sequence Length: "));
+        totalNum = new JTextArea();
+        totalNum.setEditable(false);
+        controlsArea.add(totalNum);
+        //***end of assignment2 creating GUI*****
+
+        //create tabbed pane for both assignmdnt 2 and 3 to be loaded into
+        JTabbedPane tabbedPane = new JTabbedPane();
+        //adds components of assignment 3 to the JPanel in a tab called "assignment 3"
+        tabbedPane.addTab("assignment 3" , controlsArea2);
+        //adds components of assignment 3 to the JPanel in a tab called "assig
+        tabbedPane.addTab("assignment 2", controlsArea);
+        //allow tab to be "click-able"
+        tabbedPane.setMnemonicAt(0, KeyEvent.VK_1);
+        //add the tabbed panes to the main JPanel
+        add(tabbedPane);
+
+        //include appropriate class loader for sql of choice
+        try {
+            Class.forName("com.mysql.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+            System.out.println("Could not load");
+        } finally {
+            System.out.println("Load was successful");
+        }
+        //if loaded user has access to mysql driver class
+
+        //established connection to the database through the local host
+        String databaseURI = "jdbc:mysql://localhost/assignment3?user=root&password=tho842wt";
+        String username = "root";
+        String password = "tho842wt";
+
+        //declare references to key objects that are used by sql
+        java.sql.Connection connection = null;
+        //represents SQL query
+        Statement statement = null;
+        //boolean flag to ensure connection
+        boolean connected = false;
+        //represents rows returned by the query
+        ResultSet result = null;
+
+        try {
+            //connect to database create a statement that interacts with the database
+            connection = DriverManager.getConnection(databaseURI, username, password);
+            statement = connection.createStatement();
+            connected = true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            connected = false;
+        }
+        if (connected == true) {
+            //troubleshooting to see if database connected
+            System.out.println("You are connected to database!");
+            try {
+                //store SQL command in a string.  "tableName" variable stores the name of the button pressed
+                String selectTable = "Select * FROM" + tableName;
+                //connects to data and retrieves table names within the sql query
+                DatabaseMetaData mData = connection.getMetaData();
+                result = mData.getTables(null, null, "%", null);
+                //instaniates tables variable to store Table names into strings
+                String tables = null;
+                while (result.next()) {
+                    //iterate through results and pulss feilds out of each row
+                    //stores table names into a string variable
+                    tables = (result.getString("TABLE_NAME"));
+                    //creates radio buttons from each table name in the SQL query
+                    final JRadioButton tableName = new JRadioButton(tables);
+                    //adds Dynamically created Radio Buttons to the JPanel
+                    controlsArea2.add(tableName);
+                    //adds all created button to a button group to allow only one button to be selected at a time
+                    grouper.add(tableName);
+                    //sets statement to a finalstatement
+                    Statement finalStatement = statement;
+                    //creates Method to allow for button usage
+                    tableName.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            //create SQL statment
+                            String t = "Select * From " + tableName.getText();
+                            display.setActionCommand("Display_was_pressed");
+                            display.addActionListener(this);
+                            if (e.getActionCommand() == "Display_was_pressed") {
+                                if (tableName.isSelected()) {
+                                    try {
+                                        //executes the SQL command in the SQL database
+                                        ResultSet result = finalStatement.executeQuery(t);
+                                        //calls method buildSQLMODEL to insert rows from query into a Jtable
+                                        JTable table = new JTable(buildSQLModel(result));
+                                        //JOptionPane.showMessageDialog(null, new JScrollPane(TablePane));
+                                        TablePane.setViewportView(table);
+
+                                    } catch (SQLException e1) {
+                                        e1.printStackTrace();
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                //adds the display button to the JPanel
+                display = new JButton("Display");
+                controlsArea2.add(display);
+                //creates scrollpane for Jtable
+                TablePane = new JScrollPane(table);
+                TablePane.setPreferredSize(new Dimension(500,500));
+                //adds scrollpanel and tabl to the JPanel
+                controlsArea2.add(TablePane);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    //will display table with table titles from sql
+    //pass result through this method
+    public static DefaultTableModel buildSQLModel(ResultSet result) throws SQLException {
+        //gets data from sql
+        ResultSetMetaData md = result.getMetaData();
+        //creates a vector of strings to hold column names
+        Vector<String> columnNames = new Vector<String>();
+        //gets the column count from sql data
+        int columnCount = md.getColumnCount();
+        //loops through the columns to get column names stores in columnNames vector variable
+        for (int column = 1; column <= columnCount; column++) {
+            columnNames.add(md.getColumnName(column));
+        }
+        //creates vector of objects to store data in the rows of the columns
+        Vector<Vector<Object>> data = new Vector<Vector<Object>>();
+        while (result.next()) {
+            Vector<Object> vector = new Vector<Object>();
+            //loops through columns to get data from rows
+            for (int columnIndex = 1; columnIndex <= columnCount; columnIndex++) {
+                vector.add(result.getObject(columnIndex));
+            }
+            data.add(vector);
+        }
+        //returns a table with column names and data for sql query
+        return new DefaultTableModel(data, columnNames);
+    }
+
+    //action performer for Assignment 2 functionality
+    @Override
+    public void actionPerformed(ActionEvent e) {
+
+        if (e.getActionCommand() == "process_button_was_pressed") {
+            //gets the text that the user inputs into a variable input
+            String input = inputSequence.getText();
+            //gets selected character per line from the drop down menu the user chose and stores in a variable called item
+            Object item = character.getSelectedItem();
+
+            //sets all nucleotide counts to 0 before processing of percentages occurs
+            double numA = 0;
+            double numT = 0;
+            double numC = 0;
+            double numG = 0;
+            //calculates length of user input sequence
+            double total = input.length();
+
+            //loops through input sequence to calulate the number of A,C,T and Gs in the sequence
+            for (int i = 0; i < total; i++) {
+                String str = input.substring(i, i + 1);
+                if (str.matches("[Aa]+")) {
+                    numA++;
+                } else if (str.matches("[Tt]")) {
+                    numT++;
+                } else if (str.matches("[Cc]")) {
+                    numC++;
+                } else if (str.matches("[Gg]")) {
+                    numG++;
+                }
+            }
+
+            //calculates the percentage of each nucleotide within the user input sequence
+            double perA = (numA / total) * 100;
+            double perT = (numT / total) * 100;
+            double perC = (numC / total) * 100;
+            double perG = (numG / total) * 100;
+
+            //sets the value from each number percent calculation to the percent text fields in the GUI.
+            numberA.setText(String.valueOf(numA));
+            numberT.setText(String.valueOf(numT));
+            numberC.setText(String.valueOf(numC));
+            numberG.setText(String.valueOf(numG));
+            percentA.setText(String.valueOf(perA));
+            percentT.setText(String.valueOf(perT));
+            percentC.setText(String.valueOf(perC));
+            percentG.setText(String.valueOf(perG));
+            //sets the length of the input sequence to the total text field.
+            totalNum.setText(String.valueOf(total));
+
+            //ensures that there are nucleotide letters(ACTG) in the user input sequence when performing formatting
+            //choices submitted by the user
+            if (input.matches("[ATGCatgc]+")) {
+                //if the uppercase button is pressed change the input sequence to lowercase
+                if (upperCase.isSelected()) {
+                    input = input.toUpperCase();
+
+                    //if the lowercase button is pressed change the input sequence to uppercase
+                } else if (lowerCase.isSelected()) {
+                    input = input.toLowerCase();
+                }
+
+                //if the selected item is chosen from the drop down list and equals the string in the if statements
+                //the regex command will take out the number of characters (Ie 40) and replace with the same line with a
+                //a new line at the end.
+                if ("40".equals(item)) {
+                    input = input.replaceAll("(.{40})", "$1\n");
+                } else if ("50".equals(item)) {
+                    input = input.replaceAll("(.{50})", "$1\n");
+                } else if ("60".equals(item)) {
+                    input = input.replaceAll("(.{60})", "$1\n");
+                } else if ("70".equals(item)) {
+                    input = input.replaceAll("(.{70})", "$1\n");
+                }
+                //if the group checkbox is selected the regex command will take out 10 characters at a time and replace
+                //with the same 10 characters and adds a space in between each grouping.
+                if (group.isSelected()) {
+                    input = input.replaceAll("(.{10})", "$1" + " ");
+                }
+                //sets the input sequence with all selected formatting options to the output sequence.
+                //formatted sequence will be displayed in the formatted sequence text box.
+                outputSequence.setText(input);
+            }
+            //if the DNA sequence contains other characters than A,C,T or G a pop up dialog box will be displayed asking
+            //the user to enter a new sequence.
+            else {
+                JOptionPane.showMessageDialog(frame, "Not a valid DNA sequence...try again");
+            }
+        }
+
+        //invent an action command string that states if the button was pressed do the following methods.
+        else if (e.getActionCommand() == "reset_button_was_pressed") {
+
+            //creates pop up dialog box with Yes, No and cancel options
+            resetWarning = new JOptionPane();
+            int reply = resetWarning.showConfirmDialog(null, "Are you sure you would like to Reset", "Warning", JOptionPane.YES_NO_CANCEL_OPTION);
+
+            // if yes is selected on the resetWarning box all fields will be cleared and set back to default settings.
+            if (reply == JOptionPane.YES_OPTION) {
+                inputSequence.setText("");
+                outputSequence.setText("");
+                numberA.setText("");
+                numberT.setText("");
+                numberC.setText("");
+                numberG.setText("");
+                percentA.setText("");
+                percentT.setText("");
+                percentC.setText("");
+                percentG.setText("");
+                totalNum.setText("");
+                //select lowercase radio button.
+                lowerCase.setSelected(true);
+                //set characters per line to 60.
+                character.setSelectedIndex(2);
+                //set group by 10 checkbox unselected.
+                group.setSelected(false);
+            }
+
+        }
+
+    }
+}
+
+
+class MelanieA3Main {
+    public static void main(String[] args){
+        //set the look and feel of our GUI
+        //note: this may throw and exception
+        try { //try catch will handle exceptions
+            UIManager.setLookAndFeel("javax.swing.plaf.metal.MetalLookAndFeel");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        //indicate to the Java virtual machine and the GUI system that we want to call a function "createAndShowGui()"
+        //"asynchronously" meaning "sometime later""
+        //this function will set up our GUI
+        //We're going to use the runnable class that is related to MultiThreading.  Multithreading is technically outside
+        //the scope of this course, however you can use it for your assignment
+        javax.swing.SwingUtilities.invokeLater(new Runnable(){
+            //override the run() method inherited from Runnable
+            public void run(){
+                createAndShowGui();
+            }
+        });
+
+
+
+    }
+    //This method instaniates and sets up our JPanel (MelanieA2)
+    private static void createAndShowGui(){
+        //create a JFrame that is going to be the outer container for our GUI
+        JFrame frame = new JFrame();
+        //have to specify what happens to our program when the user closes the window.
+        //frame2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        //EXIT_ON_CLOSE class within the swing package
+        //instantiate and set up the content pane (JPanel - MelanieA3)
+        JComponent myPanel2 = new MelanieA3();
+        //MelanieA3 is a sublass of JComponent
+        //make the content pane opaque (visible to the user
+        myPanel2.setOpaque(true);
+        //associate myPanel (has the content) with the JFrame container
+        frame.setContentPane(myPanel2);
+        //make the GUI visible
+        frame.pack();
+        frame.setVisible(true);
+    }
+}
+
+
